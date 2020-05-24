@@ -1,6 +1,7 @@
 #-*-coding:utf-8-*-
 import urllib
 import urllib.request as req
+import urllib.error as err
 from bs4 import BeautifulSoup
 
 """
@@ -26,10 +27,20 @@ def get_request(url):
 def get_response(Request):
 
     #发起请求获取页面
-    response = req.urlopen(Request,timeout=60)
-    #创建BeautifulSoup实例
-    soup = BeautifulSoup(response.read(),from_encoding='gbk',features='html.parser')
+    try :
+        response = req.urlopen(Request,timeout=60)
+
+    except err.HTTPError as e1:
+        print('=======================')
+    except err.URLError as e:
+        print('异常++++++++++++++++++++++++++++++=')
+        print(e.ecode)
+        print(e.reason)
+
+    soup = BeautifulSoup(response.read(), from_encoding='gbk', features='html.parser')
     return soup
+
+
 
 def get_tag(soup):
     div_lists = soup.find_all('div',attrs={'class':'level_one'})
