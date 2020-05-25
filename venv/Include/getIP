@@ -1,0 +1,140 @@
+# -*-coding:utf-8-*-
+import urllib.request as re
+import urllib.error as err
+import random
+from bs4 import BeautifulSoup
+import time
+
+"""
+爬取西刺免费代理ip，并验证有效性
+"""
+
+
+def get_header():
+    '''
+    随机选择一个User-Agent，并且返回header
+    :return: header
+    '''
+    user_agent_list = [ \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1", \
+        "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11", \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6", \
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1090.0 Safari/536.6", \
+        "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/19.77.34.5 Safari/537.1", \
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.9 Safari/536.5", \
+        "Mozilla/5.0 (Windows NT 6.0) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.36 Safari/536.5", \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3", \
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_0) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.0 Safari/536.3", \
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24", \
+        "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24"
+    ]
+
+    user_agent = random.choice(user_agent_list)
+    header = {'User-Agent': user_agent}
+    return header
+
+
+def parse_ips(response):
+    '''
+    入参响应报文，
+    出参IP列表
+    :param response:http.client.HTTPResponse
+    :return: IP列表
+    '''
+    soup = BeautifulSoup(response.read(), from_encoding='UTF-8', features='lxml')
+    ip_lists = soup.find_all('tr')[1:]
+    ips = []
+    for ip_list in ip_lists:
+        tds = ip_list.find_all('td')
+        ips.append({'ip': tds[1].text, 'port': tds[2].text, 'type': tds[5].text.lower(), 'isAnonymity': tds[4].text})
+
+    return ips
+
+
+def get_ips(url_type, pagenum):
+    '''
+
+    :param url_type: 【爬取的url类型 http OR https
+    :param pagenum: 爬取页面范围
+    :return:
+    '''
+    # 西刺IP页
+    list = {
+        '1': 'https://www.xicidaili.com/wt/{}',  # 国内http
+        '2': 'https://www.xicidaili.com/wn/{}',  # 国https
+    }
+
+    if type(url_type) is not str:
+        url_type = str(url_type)
+
+    url = list.get(url_type).format(pagenum)
+    header = get_header()
+    request = re.Request(url=url, headers=header)
+    try:
+        response = re.urlopen(request)
+    except err.HTTPError as e:
+        print(e.msg)
+        print(e.getcode())
+        print(e.geturl())
+
+    return parse_ips(response)
+
+
+def check_ip(proxy_type,proxy_ip, port):
+    '''思路：用提取的到ip代理访问目标地址，如果返回码是200则，说明ip可正常使用'''
+    target_url = 'https://blog.csdn.net/weixin_39970251/article/details/106070279'
+    header = get_header()
+    request = re.Request(target_url, headers=header)
+
+    proxy_hanlder = re.ProxyHandler({
+        '{}': '{}://{}:{}'.format(proxy_type,proxy_type,proxy_ip,port)
+    })
+
+    opener = re.build_opener(proxy_hanlder)
+    re.install_opener(opener)
+
+    try:
+        resp = re.urlopen(request)
+    except err.HTTPError as eh:
+        print('====httperror======')
+        print(eh.reason)
+        print(eh.code)
+    except err.URLError as ue:
+        print('=======URLERROR=====')
+        print(ue.reason)
+    finally:
+        return resp.status
+
+
+if __name__ == '__main__':
+
+    begin_time = time.time()
+    ip_list = []
+
+    for i in range(2):
+        url_type = i + 1
+        for pagenum in range(5):
+            ip_list += (get_ips(url_type, pagenum + 1))
+            time.sleep(1)
+    end_time = time.time()
+
+    print("total:" + str(end_time - begin_time))
+    print(ip_list)
+
+
+
+    print('=================================')
+
+    for ip in ip_list:
+        proxy_type = ip.get('type')
+        proxy_ip = ip.get('ip')
+        proxy_port = ip.get('port')
+        resp_status = check_ip(proxy_type,proxy_ip, proxy_port)
+        print(resp_status)
