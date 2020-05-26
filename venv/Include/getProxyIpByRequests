@@ -1,0 +1,110 @@
+# -*- coding:utf-8 -*-
+import requests
+import random
+from bs4 import BeautifulSoup
+
+
+def get_header():
+    '''
+    随机获取一个user_agent 并返回一个 header
+    :return: header
+    '''
+    user_agent_list = [ \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/22.0.1207.1 Safari/537.1", \
+        "Mozilla/5.0 (X11; CrOS i686 2268.111.0) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11", \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1092.0 Safari/536.6", \
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/20.0.1090.0 Safari/536.6", \
+        "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/19.77.34.5 Safari/537.1", \
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.9 Safari/536.5", \
+        "Mozilla/5.0 (Windows NT 6.0) AppleWebKit/536.5 (KHTML, like Gecko) Chrome/19.0.1084.36 Safari/536.5", \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 5.1) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3", \
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_0) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1063.0 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1062.0 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.1 Safari/536.3", \
+        "Mozilla/5.0 (Windows NT 6.2) AppleWebKit/536.3 (KHTML, like Gecko) Chrome/19.0.1061.0 Safari/536.3", \
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24", \
+        "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/535.24 (KHTML, like Gecko) Chrome/19.0.1055.1 Safari/535.24"
+    ]
+
+    user_agent = random.choice(user_agent_list)
+    header = {'User-Agent': user_agent}
+
+    return header
+
+
+def get_ips(ip_type, pagename):
+    '''
+    根据入参的代理类型，网页数，发起请求并返回响应报文
+    :param ip_type: 代理类型
+    :param pagename: 提取页面
+    :return: 请求响应报文
+    '''
+    # 西刺IP页
+    list = {
+        '1': 'https://www.xicidaili.com/wt/{}',  # 国内http
+        '2': 'https://www.xicidaili.com/wn/{}',  # 国https
+    }
+    if type(ip_type) is not str:
+        ip_type = str(ip_type)
+
+    url = list.get(ip_type).format(pagename)
+
+    header = get_header()
+    response = requests.get(url, headers=header)
+
+    return response
+
+
+def parse_ips(response):
+    '''
+    根据入参的响应报文，提取页面IP信息，并返回
+    :param response:
+    :return:
+    '''
+    soup = BeautifulSoup(response.text, features='lxml')
+    ip_lists = soup.find_all('tr')[1:]
+    ips = []
+    for ip_list in ip_lists:
+        tds = ip_list.find_all('td')
+        ips.append({'ip': tds[1].text, 'port': tds[2].text, 'type': tds[5].text.lower(), 'isAnonymity': tds[4].text})
+
+    return ips
+
+
+def check_ip(proxi_type, proxi_ip, proxi_port):
+    target_url = 'https://blog.csdn.net/weixin_39970251/article/details/106339117'
+    header = get_header()
+    proxies = {
+        '{}'.format(proxi_type): '{}://{}:{}'.format(proxi_type, proxi_ip, proxi_port)
+
+    }
+    r = requests.get(url=target_url, headers=header, proxies=proxies)
+
+    if r.status_code == requests.codes.ok:
+        return True
+    else:
+        return False
+
+
+if __name__ == "__main__":
+# ips_list = get_ips(1, 1)
+# ips = parse_ips(ips_list)
+# print(ips)
+
+#     flag = check_ip('http','14.115.104.110','808')
+#     print(flag)
+#
+# {'ip': '14.115.104.110', 'port': '808', 'type': 'http', 'isAnonymity': '透明'},
+# {'ip': '202.115.142.147', 'port': '9200', 'type': 'http', 'isAnonymity': '高匿'},
+# { 'ip': '49.88.210.150', 'port': '30001','type': 'http', 'isAnonymity': '高匿'}
+
+list = [{'ip': '14.115.104.110', 'port': '808', 'type': 'http', 'isAnonymity': '透明'},
+        {'ip': '202.115.142.147', 'port': '9200', 'type': 'http', 'isAnonymity': '高匿'},
+        {'ip': '49.88.210.150', 'port': '30001', 'type': 'http', 'isAnonymity': '高匿'}]
+sites = set(list)
+
+print(list)
